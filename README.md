@@ -2,25 +2,30 @@
 
 This project exposes a FastAPI backend with built-in Swagger documentation, so the easiest way to verify the API is to run the backend locally and test each endpoint in the browser at `http://localhost:9000/docs`.[1]
 
+### Important behavior from the current code
+
+The current backend code loads `DATABASE_URL` from environment variables and only falls back to `sqlite:///./demo.db` if `DATABASE_URL` is not set.[2] The code also runs `Base.metadata.create_all(bind=engine)` at startup, so tables are created in whichever database your `DATABASE_URL` points to, including Railway if that is what you configured.[2]
+
+Also, the current code does **not** enforce JWT authentication on `GET /api/users`, `GET /api/users/{user_id}`, or `DELETE /api/users/{user_id}` because those routes only depend on `get_db` and not on any token validation dependency.[2]
+
 ### What this section covers
 
 This guide walks through:
 
-- Cloning the repository.[1]
-- Starting the backend locally with `uvicorn simple_server:app --host 0.0.0.0 --port 9000 --reload`.[1]
+- Starting the backend locally with the documented Uvicorn command.[1]
 - Opening Swagger UI at `http://localhost:9000/docs`.[1]
-- Registering a user, logging in, copying the JWT token, and authorizing protected routes.[1]
-- Testing GET, POST, and DELETE endpoints with both valid and invalid payloads based on the documented API flow.[1]
-- Verifying that the SQLite database file `demo.db` is being updated during API calls.[1]
+- Registering a user and logging in to get a token.[2]
+- Testing GET, POST, and DELETE endpoints with good and bad inputs based on the current code behavior.[2]
+- Verifying data changes against a Railway-hosted database when `DATABASE_URL` is set to Railway.[2]
 
 ### Prerequisites
 
 Make sure the following are installed on your machine:
 
-- Python 3.9 or newer.[1]
-- `pip`.[1]
-- Git.[1]
-- Optional: a virtual environment tool such as `venv`.[1]
+- Python 3.9 or newer.
+- `pip`.
+- Git.
+- Optional: a virtual environment tool such as `venv`.
 
 ***
 
@@ -56,50 +61,40 @@ source venv/bin/activate
 
 ```bash
 python -m venv venv
-venv\Scripts\activate
+venv\Scriptsctivate
 ```
 
 ***
 
 ### 4. Install backend dependencies
 
-Install dependencies from the requirements file.[1]
-
 ```bash
 pip install -r requirements.txt
 ```
 
-If you want to install packages manually, the README also documents FastAPI, Uvicorn, SQLAlchemy, bcrypt, `python-jose[cryptography]`, Pydantic, `python-dotenv`, and `pymysql` as required backend packages.[1]
-
 ***
 
-### 5. Create the environment file
+### 5. Configure environment variables
 
 Create a file named `.env` inside the `backend/` folder.
 
 Example:
 
 ```env
-DATABASE_URL=sqlite:///./demo.db
+DATABASE_URL=<your Railway connection string>
 SECRET_KEY=supersecretkey
 ```
 
-The README documents SQLite `demo.db` for local backend testing, and the file is expected to be created automatically after the backend starts successfully.[1]
+The current code reads `DATABASE_URL` from the environment first, so if you use a Railway connection string, all inserts, reads, and deletes happen in Railway rather than in a local SQLite file.[2]
 
 ***
 
 ### 6. Start the FastAPI server
 
-Run the backend with Uvicorn using the documented startup command.[1]
+Run the backend with Uvicorn:
 
 ```bash
 uvicorn simple_server:app --host 0.0.0.0 --port 9000 --reload
-```
-
-Expected result:
-
-```text
-Uvicorn running on http://0.0.0.0:9000
 ```
 
 Once the server starts, the API base URL is `http://localhost:9000` and Swagger UI is available at `http://localhost:9000/docs`.[1]
@@ -108,16 +103,16 @@ Once the server starts, the API base URL is `http://localhost:9000` and Swagger 
 
 ## Available API Endpoints
 
-The repository README documents the following routes for the backend workflow.[1]
+The current code exposes the following routes.[2]
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/` | Health check endpoint.[1] |
-| POST | `/api/auth/register` | Register a new user.[1] |
-| POST | `/api/auth/login` | Authenticate a user and return a JWT token.[1] |
-| GET | `/api/users` | Fetch all users, typically protected.[1] |
-| GET | `/api/users/{user_id}` | Fetch one user by ID, typically protected.[1] |
-| DELETE | `/api/users/{user_id}` | Delete a user by ID, typically protected.[1] |
+| GET | `/` | Health check route that returns a running message.[2] |
+| POST | `/api/auth/register` | Registers a user and immediately returns a bearer token.[2] |
+| POST | `/api/auth/login` | Validates credentials and returns a bearer token.[2] |
+| GET | `/api/users` | Lists all users.[2] |
+| GET | `/api/users/{user_id}` | Returns one user by integer ID.[2] |
+| DELETE | `/api/users/{user_id}` | Deletes one user by integer ID.[2] |
 
 ***
 
@@ -125,32 +120,19 @@ The repository README documents the following routes for the backend workflow.[1
 
 ### Step 1: Test the health route
 
-In Swagger UI:
+1. Open Swagger UI at `http://localhost:9000/docs`.[1]
+2. Expand `GET /`.
+3. Click **Try it out** and then **Execute**.
 
-1. Expand `GET /`.
-2. Click **Try it out**.
-3. Click **Execute**.
+**Expected result**
 
-**Good test case**
-
-No request body is required for this endpoint, so a successful response confirms that the FastAPI server is running and reachable.[1]
-
-**Bad test case**
-
-If `GET /` fails, the main problem is usually that the backend is not running or is running on a different port than `9000`.[1]
+The route should return `{"message": "User Management API is running"}` based on the current code.[2]
 
 ***
 
-### Step 2: Register a new user with `POST /api/auth/register`
+### Step 2: Register a user with `POST /api/auth/register`
 
-In Swagger UI:
-
-1. Expand `POST /api/auth/register`.
-2. Click **Try it out**.
-3. Use one of the request bodies below.
-4. Click **Execute**.
-
-#### Good registration input
+Use a valid JSON body like this:
 
 ```json
 {
@@ -162,9 +144,9 @@ In Swagger UI:
 
 **Expected result**
 
-A success response means the user was created and stored in the local database flow described by the README.[1]
+The route checks whether either the username or email already exists, creates the user, hashes the password with bcrypt, stores the row, and returns an access token plus `token_type: bearer`.[2]
 
-#### More good registration examples
+#### Good registration test cases
 
 ```json
 {
@@ -182,9 +164,9 @@ A success response means the user was created and stored in the local database f
 }
 ```
 
-#### Bad registration inputs to test
+#### Bad registration test cases
 
-**Case 1: Duplicate username or email**
+**Duplicate username or email**
 
 ```json
 {
@@ -194,9 +176,9 @@ A success response means the user was created and stored in the local database f
 }
 ```
 
-This should fail if the backend enforces uniqueness, which is the normal behavior for a user registration flow even though the exact validation text is not fully visible in the page capture.[1]
+The current code explicitly returns `400` with `"Username or email already exists"` when a matching username or email is found.[2]
 
-**Case 2: Missing field**
+**Missing field**
 
 ```json
 {
@@ -205,21 +187,9 @@ This should fail if the backend enforces uniqueness, which is the normal behavio
 }
 ```
 
-FastAPI and Pydantic usually reject missing required fields in documented request schemas, so this is a useful negative test for request validation.[1]
+Pydantic request validation should reject a missing required field because `UserCreate` requires `username`, `email`, and `password`.[2]
 
-**Case 3: Invalid email shape**
-
-```json
-{
-  "username": "bad_email_user",
-  "email": "not-an-email",
-  "password": "Demo1234!"
-}
-```
-
-Use this to check whether email validation exists in the route schema or backend logic.[1]
-
-**Case 4: Empty strings**
+**Blank values**
 
 ```json
 {
@@ -229,32 +199,25 @@ Use this to check whether email validation exists in the route schema or backend
 }
 ```
 
-This is a good boundary test to see whether the route only checks field presence or also checks content quality.
+The current Pydantic model uses plain `str` fields without extra validation constraints, so blank strings may still pass schema validation and should be tested as a code-quality edge case.[2]
 
-**Case 5: Very short password**
+**Invalid email format**
 
 ```json
 {
-  "username": "tiny_pass",
-  "email": "tiny@example.com",
-  "password": "123"
+  "username": "bad_email_user",
+  "email": "not-an-email",
+  "password": "Demo1234!"
 }
 ```
 
-Use this to verify whether password-length or strength validation is enforced.
+The current model uses `email: str`, not an email-specific Pydantic type, so this may be accepted unless additional validation is added later.[2]
 
 ***
 
 ### Step 3: Log in with `POST /api/auth/login`
 
-In Swagger UI:
-
-1. Expand `POST /api/auth/login`.
-2. Click **Try it out**.
-3. Use credentials for a user that was already registered.
-4. Click **Execute**.
-
-#### Good login input
+Use a registered username and password:
 
 ```json
 {
@@ -265,20 +228,11 @@ In Swagger UI:
 
 **Expected result**
 
-The README describes this route as returning an access token used for bearer authentication in protected routes.[1]
+The code looks up the user by username, verifies the password with bcrypt, and returns an access token on success.[2]
 
-Example shape:
+#### Bad login test cases
 
-```json
-{
-  "access_token": "your_jwt_token_here",
-  "token_type": "bearer"
-}
-```
-
-#### Bad login inputs to test
-
-**Case 1: Wrong password**
+**Wrong password**
 
 ```json
 {
@@ -287,9 +241,9 @@ Example shape:
 }
 ```
 
-This should fail and is the most important negative authentication test.
+The current code returns `401` with `"Invalid credentials"` if the password check fails.[2]
 
-**Case 2: Unknown username**
+**Unknown username**
 
 ```json
 {
@@ -298,9 +252,9 @@ This should fail and is the most important negative authentication test.
 }
 ```
 
-This should also fail because the account was never registered.
+The current code also returns `401` with `"Invalid credentials"` if no matching username exists.[2]
 
-**Case 3: Missing password**
+**Missing password**
 
 ```json
 {
@@ -308,100 +262,35 @@ This should also fail because the account was never registered.
 }
 ```
 
-This should trigger request validation if the schema requires both username and password.
-
-**Case 4: Empty payload values**
-
-```json
-{
-  "username": "",
-  "password": ""
-}
-```
-
-This tests whether the endpoint rejects blank credentials instead of just missing keys.
+This should fail request validation because `UserLogin` requires both `username` and `password`.[2]
 
 ***
 
-### Step 4: Authorize Swagger with the JWT token
+### Step 4: Test `GET /api/users`
 
-Protected endpoints require authentication.[1]
+Open `GET /api/users` in Swagger and click **Execute**.
 
-In Swagger UI:
+**Expected result**
 
-1. Click the **Authorize** button near the top right.
-2. Paste the token into the authorization field.
-3. If Swagger expects the full bearer format, enter:
+The route returns all users as a JSON list with `id`, `username`, `email`, `is_active`, and `created_at` fields.[2]
 
-```text
-Bearer your_jwt_token_here
-```
+**Important note**
 
-4. Click **Authorize**.
-5. Click **Close**.
-
-**Good auth test**
-
-After authorization, protected routes such as `GET /api/users`, `GET /api/users/{user_id}`, and `DELETE /api/users/{user_id}` should begin working if the token is valid.[1]
-
-**Bad auth tests**
-
-- Use no token at all.
-- Use an expired or malformed token.
-- Use `Bearer` with a truncated token string.
-
-Those cases should return `401 Unauthorized` in a correct JWT-protected flow.
-
-***
-
-### Step 5: Test `GET /api/users`
-
-In Swagger UI:
-
-1. Expand `GET /api/users`.
-2. Click **Try it out**.
-3. Click **Execute**.
+Despite the app having login and token-generation routes, the current `GET /api/users` route does not require JWT authentication in the code.[2]
 
 #### Good test case
 
-Call the route after authorizing with a valid JWT token.[1]
+- Run the route after registering one or more users, and confirm the returned list includes them.[2]
 
-**Expected result**
+#### Bad or edge test case
 
-A successful response should return a JSON array of users stored through the registration flow.[1]
-
-#### Bad test cases
-
-**Case 1: No authorization header**
-
-Execute the route before clicking **Authorize**.
-
-**Expected result**
-
-This should fail with an authentication error because the README indicates the route is protected.[1]
-
-**Case 2: Invalid token**
-
-Authorize Swagger with a fake or damaged token and retry the request.
-
-**Expected result**
-
-This should also fail with an authentication error in a correct JWT flow.
+- Run the route before any users are created and confirm it returns an empty list rather than failing, because the route simply queries all rows from the `users` table.[2]
 
 ***
 
-### Step 6: Test `GET /api/users/{user_id}`
+### Step 5: Test `GET /api/users/{user_id}`
 
-In Swagger UI:
-
-1. Expand `GET /api/users/{user_id}`.
-2. Click **Try it out**.
-3. Enter a user ID.
-4. Click **Execute**.
-
-#### Good test case
-
-Use a real ID returned from `GET /api/users`.
+Use a real numeric ID returned from `GET /api/users`.
 
 Example:
 
@@ -411,58 +300,41 @@ Example:
 
 **Expected result**
 
-A successful response should return details for that specific user when the ID exists.[1]
+The route returns one user object when the ID exists.[2]
 
 #### Bad test cases
 
-**Case 1: Non-existent ID**
+**Non-existent ID**
 
 ```text
 9999
 ```
 
-This should return a not-found style response if no user exists with that ID.
+The current code returns `404` with `"User not found"` if the queried ID does not exist.[2]
 
-**Case 2: Invalid path value**
+**Invalid path type**
 
 ```text
 abc
 ```
 
-FastAPI path parameter typing should reject a non-integer user ID if the route expects an integer.
+The route signature declares `user_id: int`, so FastAPI should reject a non-integer path parameter before the query runs.[2]
 
-**Case 3: Negative ID**
+**Negative ID**
 
 ```text
 -1
 ```
 
-Use this to see whether the route validates ID ranges in addition to type.
-
-**Case 4: No token**
-
-Run the request without authorization.
-
-This should fail with `401 Unauthorized` if the route is protected as documented.[1]
+This should query the table and then return `404` if no row exists with that ID, because the code does not add a separate positive-range validation step.[2]
 
 ***
 
-### Step 7: Test `DELETE /api/users/{user_id}`
+### Step 6: Test `DELETE /api/users/{user_id}`
 
-Use this route carefully because it removes a user from the database.[1]
+Use a real numeric ID from `GET /api/users`.
 
-In Swagger UI:
-
-1. Expand `DELETE /api/users/{user_id}`.
-2. Click **Try it out**.
-3. Enter the target user ID.
-4. Click **Execute**.
-
-#### Good test case
-
-Create a temporary test user, get its ID from `GET /api/users`, then delete that user.
-
-Example user ID:
+Example:
 
 ```text
 2
@@ -470,104 +342,77 @@ Example user ID:
 
 **Expected result**
 
-The user should be removed successfully and should no longer appear in the `GET /api/users` response.[1]
+The current code deletes the matching user, commits the transaction, and returns `{"message": "User deleted successfully"}`.[2]
 
-#### Bad test cases
+#### Good delete test case
 
-**Case 1: Delete a user that does not exist**
+- Create a temporary user, confirm it appears in `GET /api/users`, delete it with `DELETE /api/users/{user_id}`, and then re-run `GET /api/users` to confirm it is gone.[2]
+
+#### Bad delete test cases
+
+**Delete a user that does not exist**
 
 ```text
 9999
 ```
 
-This should return a not-found style response.
+The current code returns `404` with `"User not found"` when no matching row exists.[2]
 
-**Case 2: Invalid ID type**
+**Invalid ID type**
 
 ```text
 abc
 ```
 
-This should be rejected by FastAPI path validation if the route expects an integer.
+FastAPI should reject the request because the route expects an integer `user_id`.[2]
 
-**Case 3: No authorization token**
+**Delete the same user twice**
 
-Run the delete request without authorization.
+Delete a valid user once, then send the same delete request again.
 
-This should fail with `401 Unauthorized` in a protected delete flow.[1]
-
-**Case 4: Delete the same user twice**
-
-Delete a valid user once, then immediately try deleting the same ID again.
-
-The first call should succeed and the second should return a not-found style response because the record is already gone.
+The first call should succeed and the second should return `404` because the row is already gone.[2]
 
 ***
 
-## Suggested end-to-end manual test script
+## Railway database verification
 
-Use this exact flow to validate the whole API in Swagger:
+If your `.env` sets `DATABASE_URL` to Railway, then the app is using Railway and not creating a local SQLite file, because the code uses the environment value first and only falls back to `sqlite:///./demo.db` when `DATABASE_URL` is absent.[2]
 
-1. Start the backend with `uvicorn simple_server:app --host 0.0.0.0 --port 9000 --reload`.[1]
-2. Open `http://localhost:9000/docs`.[1]
-3. Test `GET /`.[1]
-4. Register a new user with `POST /api/auth/register`.[1]
-5. Log in with `POST /api/auth/login`.[1]
-6. Copy the `access_token` value.[1]
-7. Click **Authorize** and add the token as bearer auth.
-8. Test `GET /api/users`.[1]
-9. Test `GET /api/users/{user_id}` using an ID returned by the users list.[1]
-10. Test `DELETE /api/users/{user_id}` on a temporary test account.[1]
-11. Call `GET /api/users` again and confirm the deleted account is gone.
+Use this validation flow:
 
-This sequence verifies server startup, Swagger access, POST registration, POST login, JWT authorization, protected GET routes, DELETE behavior, and database persistence through the documented local setup.[1]
+1. Register a new test user with `POST /api/auth/register`.[2]
+2. Confirm the new row appears in `GET /api/users`.[2]
+3. Fetch the same user with `GET /api/users/{user_id}`.[2]
+4. Delete that user with `DELETE /api/users/{user_id}`.[2]
+5. Confirm the record is gone from `GET /api/users`.[2]
 
-***
-
-## How to confirm the database is working
-
-The local README flow documents SQLite with `DATABASE_URL=sqlite:///./demo.db`, and that means the backend creates and uses a local file named `demo.db` inside `backend/` during testing.[1]
-
-Use these checks:
-
-- Confirm that `backend/demo.db` appears after the backend starts.[1]
-- Register a user and confirm that `GET /api/users` returns that user after login and authorization.[1]
-- Delete a test user and confirm that the user disappears from the list route on the next request.[1]
+That proves inserts, reads, and deletes are happening against the Railway-hosted database used by `DATABASE_URL`.[2]
 
 ***
 
 ## Good vs bad input summary
 
-| Endpoint | Good input | Bad input examples | What to look for |
+| Endpoint | Good input | Bad input examples | What current code suggests |
 |---|---|---|---|
-| `GET /` | No body needed. | Server not running, wrong port. | Should confirm API availability.[1] |
-| `POST /api/auth/register` | Unique username, valid email, non-empty password. | Missing fields, duplicate username/email, invalid email, empty strings, very short password. | Should create a user or return validation/conflict errors. |
-| `POST /api/auth/login` | Existing username + correct password. | Wrong password, unknown username, missing password, blank values. | Should return JWT or auth failure. |
-| `GET /api/users` | Valid bearer token. | No token, invalid token. | Should return user list or `401`. |
-| `GET /api/users/{user_id}` | Existing numeric ID + valid token. | `9999`, `abc`, `-1`, no token. | Should return record, validation error, not found, or `401`. |
-| `DELETE /api/users/{user_id}` | Existing numeric ID + valid token. | `9999`, `abc`, no token, delete same user twice. | Should delete once, then fail cleanly after that. |
+| `GET /` | No body needed. | Server not running, wrong port. | Should return a running message.[2] |
+| `POST /api/auth/register` | Unique username, any string email, non-empty password. | Duplicate username/email, missing fields, blank strings, invalid email shape. | Duplicate check exists; strong field validation is limited.[2] |
+| `POST /api/auth/login` | Existing username and correct password. | Wrong password, unknown username, missing password. | Invalid credentials return `401`.[2] |
+| `GET /api/users` | No auth required in current code. | Empty dataset is a useful edge case. | Returns list of users.[2] |
+| `GET /api/users/{user_id}` | Existing numeric ID. | `9999`, `abc`, `-1`. | Returns user or `404`; type errors fail earlier.[2] |
+| `DELETE /api/users/{user_id}` | Existing numeric ID. | `9999`, `abc`, deleting same user twice. | Deletes once, then `404` after row is gone.[2] |
 
 ***
 
 ## Common problems and fixes
 
-### Problem: `ModuleNotFoundError` or Uvicorn cannot find `simple_server`
+### Problem: No local `demo.db` file appears
 
-Make sure you are inside the `backend/` directory before running the documented startup command.[1]
+That is expected if `DATABASE_URL` is set to Railway or any non-SQLite database URL, because the code only uses local SQLite as a fallback default.[2]
 
-```bash
-cd backend
-uvicorn simple_server:app --host 0.0.0.0 --port 9000 --reload
-```
+### Problem: Registration works but no protected auth is needed on user routes
 
-### Problem: Swagger opens but protected routes return `401 Unauthorized`
+That is also expected from the current code because the list, get-by-id, and delete routes do not include a token-check dependency.[2]
 
-The README flow requires using the token from `POST /api/auth/login` in Swagger authorization before testing protected endpoints.[1]
+### Problem: Invalid email still gets accepted
 
-### Problem: `GET /api/users/{user_id}` returns not found
-
-Use `GET /api/users` first, then copy a real ID from the list before testing the single-user route.
-
-### Problem: `demo.db` is missing
-
-Make sure `backend/.env` contains `DATABASE_URL=sqlite:///./demo.db` and that the backend actually started successfully.[1]
+That can happen because the current `UserCreate` model uses `email: str` instead of a stricter email validation type.[2]
