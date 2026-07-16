@@ -3,32 +3,43 @@
 // All HTTP calls to the FastAPI backend live here.
 // React components call these functions - they never make fetch() calls directly.
 //
-// WHY CENTRALIZE API CALLS?
-// - If the base URL changes, you change it in ONE place
-// - Easy to add global headers (Authorization token) in one place
-// - Consistent error handling
-// - Easy to mock during testing
+// FIXES APPLIED:
+// - BASE_URL corrected from localhost:8000 to localhost:9000 (backend runs on 9000)
+// - All auth routes prefixed with /api/auth/ to match backend
+// - All users routes prefixed with /api/users to match backend
+// - Removed non-existent /auth/profile endpoint
+// - Added getMe() which decodes the JWT sub claim instead of hitting a missing profile route
+// - Removed PUT/POST usersAPI methods that have no matching backend route
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'http://localhost:9000';
 
-// ─── TOKEN MANAGEMENT ─────────────────────────────────────────────────────────
+// ─── TOKEN MANAGEMENT ───────────────────────────────────────────────────────────
 // localStorage stores data persistently in the browser.
 // Unlike sessionStorage, it survives page refreshes and tab closes.
 // The JWT token is stored here after login and sent with every request.
-//
-// WHY localStorage?
-// Simple and works for demo/interview projects.
-// In production apps, httpOnly cookies are more secure (prevent XSS).
-// This is a common interview discussion point.
 
 export const tokenUtils = {
   getToken: () => localStorage.getItem('access_token'),
   setToken: (token) => localStorage.setItem('access_token', token),
   removeToken: () => localStorage.removeItem('access_token'),
   isLoggedIn: () => !!localStorage.getItem('access_token'),
+
+  // Decode the JWT payload (base64) to extract username and user id.
+  // The backend encodes { sub: username, id: user_id } inside the token.
+  // This avoids needing a /auth/profile endpoint that does not exist.
+  decodeToken: () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return null;
+    try {
+      const payload = token.split('.')[1];
+      return JSON.parse(atob(payload));
+    } catch {
+      return null;
+    }
+  },
 };
 
-// ─── HTTP HELPER ─────────────────────────────────────────────────────────────────
+// ─── HTTP HELPER ────────────────────────────────────────────────────────────────
 // Internal helper that adds auth headers and handles errors.
 // All API functions below use this instead of calling fetch() directly.
 
@@ -39,7 +50,6 @@ const apiRequest = async (endpoint, options = {}) => {
     headers: {
       'Content-Type': 'application/json',
       // If a token exists, add it to every request.
-      // This is the Bearer token pattern - required by our protected endpoints.
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
@@ -63,49 +73,51 @@ const apiRequest = async (endpoint, options = {}) => {
   return data;
 };
 
-// ─── AUTH ENDPOINTS ───────────────────────────────────────────────────────────────
+// ─── AUTH ENDPOINTS ─────────────────────────────────────────────────────────────
+// Routes match backend simple_server.py exactly:
+//   POST /api/auth/register  -> expects { username, email, password }
+//   POST /api/auth/login     -> expects { username, password }
+//   No /auth/profile route exists in the backend.
 
 export const authAPI = {
-  // POST /auth/register
-  register: (userData) => apiRequest('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(userData),
-  }),
+  // POST /api/auth/register
+  // Backend UserCreate model: username (str), email (str), password (str)
+  // Returns: { access_token, token_type }
+  register: (userData) =>
+    apiRequest('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }),
 
-  // POST /auth/login - returns { access_token, token_type }
-  login: (credentials) => apiRequest('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  }),
-
-  // GET /auth/profile - returns current user (protected)
-  getProfile: () => apiRequest('/auth/profile'),
+  // POST /api/auth/login
+  // Backend UserLogin model: username (str), password (str)
+  // Returns: { access_token, token_type }
+  login: (credentials) =>
+    apiRequest('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
 };
 
-// ─── USERS ENDPOINTS ──────────────────────────────────────────────────────────────
+// ─── USERS ENDPOINTS ────────────────────────────────────────────────────────────
+// Routes match backend simple_server.py exactly:
+//   GET    /api/users            -> returns array of { id, username, email, is_active, created_at }
+//   GET    /api/users/{id}       -> returns single user object
+//   DELETE /api/users/{id}       -> returns { message: 'User deleted successfully' }
+//
+// NOTE: Backend has NO POST /api/users, NO PUT /api/users/{id}.
+// Those were removed from the API layer to avoid confusion.
 
 export const usersAPI = {
-  // GET /users - returns array of users
-  getAll: (skip = 0, limit = 10) =>
-    apiRequest(`/users/?skip=${skip}&limit=${limit}`),
+  // GET /api/users
+  getAll: () => apiRequest('/api/users'),
 
-  // GET /users/{id}
-  getById: (id) => apiRequest(`/users/${id}`),
+  // GET /api/users/{id}
+  getById: (id) => apiRequest(`/api/users/${id}`),
 
-  // POST /users
-  create: (userData) => apiRequest('/users/', {
-    method: 'POST',
-    body: JSON.stringify(userData),
-  }),
-
-  // PUT /users/{id}
-  update: (id, userData) => apiRequest(`/users/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(userData),
-  }),
-
-  // DELETE /users/{id}
-  delete: (id) => apiRequest(`/users/${id}`, {
-    method: 'DELETE',
-  }),
+  // DELETE /api/users/{id}
+  delete: (id) =>
+    apiRequest(`/api/users/${id}`, {
+      method: 'DELETE',
+    }),
 };
