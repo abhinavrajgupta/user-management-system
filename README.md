@@ -16,7 +16,6 @@ user-management-system/
 │   ├── src/
 │   ├── package.json
 │   └── ...
-└── docker-compose.yml
 ```
 
 ## Run the Backend
