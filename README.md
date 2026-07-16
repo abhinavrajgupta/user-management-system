@@ -1,294 +1,143 @@
 # User Management System
 
-A full-stack user management API built with **FastAPI** (Python), **SQLite** (database), and **JWT** authentication. This README covers every step to run the project end-to-end with real example values and outputs.
+A full-stack user management project with a FastAPI backend, a React frontend, JWT authentication, and Swagger docs for API testing.[cite:1]
 
----
+## Tech stack
 
-## Tech Stack
+- Backend: FastAPI, SQLAlchemy, bcrypt, python-jose.[cite:1]
+- Database: SQLite stored locally as `demo.db` in the `backend/` folder.[cite:1]
+- Frontend: React app in the `frontend/` directory.[cite:1]
+- API docs: Swagger UI is available at `/docs` when the backend is running.[cite:1]
 
-- **Backend:** FastAPI + SQLAlchemy + bcrypt + python-jose
-- **Database:** SQLite (file-based, zero config)
-- **Auth:** JWT Bearer Tokens
-- **Docs:** Auto-generated Swagger UI at `/docs`
+## Project structure
 
----
+```text
+user-management-system/
+├── backend/
+├── frontend/
+├── docker-compose.yml
+└── README.md
+```
 
-## Step 1 — Clone the Repository
+The repository contains separate `backend/` and `frontend/` folders, so the API and UI should be started separately during local development unless Docker is used to orchestrate both.[cite:1]
+
+## Option 1: Run locally
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/abhinavrajgupta/user-management-system.git
-cd user-management-system/backend
+cd user-management-system
 ```
 
----
+### 2. Start the backend
 
-## Step 2 — Create a Virtual Environment
+Open a terminal and run:
 
 ```bash
+cd backend
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-> On Windows use: `venv\Scripts\activate`
+On Windows, use:
 
----
+```bash
+venv\Scripts\activate
+```
 
-## Step 3 — Install Dependencies
+Install dependencies:
 
 ```bash
 pip install fastapi uvicorn sqlalchemy bcrypt python-jose[cryptography] pydantic python-dotenv
 ```
 
----
-
-## Step 4 — Create the `.env` File
-
-Create a `.env` file inside the `backend/` folder:
+Create a `.env` file inside `backend/`:
 
 ```env
 DATABASE_URL=sqlite:///./demo.db
 SECRET_KEY=supersecretkey
 ```
 
-> The SQLite database file (`demo.db`) will be auto-created when the server starts.
-
----
-
-## Step 5 — Run the Server
+Then start the API server:
 
 ```bash
 uvicorn simple_server:app --host 0.0.0.0 --port 9000
 ```
 
-**Expected output:**
-```
-INFO:     Started server process [12345]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:9000 (Press CTRL+C to quit)
-```
+Expected result:
 
----
+- The backend runs on `http://localhost:9000`.[cite:1]
+- Swagger UI is available at `http://localhost:9000/docs`.[cite:1]
+- This step starts the API only; it does **not** render the React frontend.[cite:1]
 
-## Step 6 — Open Swagger UI
+### 3. Start the frontend
 
-Navigate to: **http://localhost:9000/docs**
+Open a **second terminal** from the project root and run:
 
-You will see all available endpoints:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Health check |
-| POST | `/api/auth/register` | Register a new user |
-| POST | `/api/auth/login` | Login and get JWT token |
-| GET | `/api/users` | List all users |
-| GET | `/api/users/{user_id}` | Get a user by ID |
-| DELETE | `/api/users/{user_id}` | Delete a user by ID |
-
----
-
-## Step 7 — Register a User
-
-**Click:** `POST /api/auth/register` → `Try it out` → paste the body below → `Execute`
-
-**Request body:**
-```json
-{
-  "username": "demouser1",
-  "email": "demouser1@test.com",
-  "password": "Demo1234"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vdXNlcjEiLCJpZCI6MSwi...",
-  "token_type": "bearer"
-}
-```
-
-> Save the `access_token` — you'll need it to authenticate protected requests.
-
----
-
-## Step 8 — Login
-
-**Click:** `POST /api/auth/login` → `Try it out` → paste the body below → `Execute`
-
-**Request body:**
-```json
-{
-  "username": "demouser1",
-  "password": "Demo1234"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZW1vdXNlcjEiLCJpZCI6MSwi...",
-  "token_type": "bearer"
-}
-```
-
-> Wrong password returns `401 Unauthorized: Invalid credentials`
-
----
-
-## Step 9 — List All Users
-
-**Click:** `GET /api/users` → `Try it out` → `Execute`
-
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "username": "demouser1",
-    "email": "demouser1@test.com",
-    "is_active": true,
-    "created_at": "2026-07-16 04:56:49"
-  }
-]
-```
-
-> Each user shows their `id`, `username`, `email`, `is_active` status, and `created_at` timestamp.
-
----
-
-## Step 10 — Get a User by ID
-
-**Click:** `GET /api/users/{user_id}` → `Try it out` → set `user_id = 1` → `Execute`
-
-**Response (200 OK):**
-```json
-{
-  "id": 1,
-  "username": "demouser1",
-  "email": "demouser1@test.com",
-  "is_active": true,
-  "created_at": "2026-07-16 04:56:49"
-}
-```
-
-> If the user doesn't exist: `404 Not Found: User not found`
-
----
-
-## Step 11 — Register a Second User (Optional)
-
-Register another user to see the list grow:
-
-**Request body for** `POST /api/auth/register`:
-```json
-{
-  "username": "demouser2",
-  "email": "demouser2@test.com",
-  "password": "Demo5678"
-}
-```
-
-**List all users again** (`GET /api/users`) — now shows both:
-```json
-[
-  {
-    "id": 1,
-    "username": "demouser1",
-    "email": "demouser1@test.com",
-    "is_active": true,
-    "created_at": "2026-07-16 04:56:49"
-  },
-  {
-    "id": 2,
-    "username": "demouser2",
-    "email": "demouser2@test.com",
-    "is_active": true,
-    "created_at": "2026-07-16 05:01:12"
-  }
-]
-```
-
----
-
-## Step 12 — Delete a User
-
-**Click:** `DELETE /api/users/{user_id}` → `Try it out` → set `user_id = 2` → `Execute`
-
-**Response (200 OK):**
-```json
-{
-  "message": "User deleted successfully"
-}
-```
-
-**List users again** (`GET /api/users`) — user 2 is gone:
-```json
-[
-  {
-    "id": 1,
-    "username": "demouser1",
-    "email": "demouser1@test.com",
-    "is_active": true,
-    "created_at": "2026-07-16 04:56:49"
-  }
-]
-```
-
-> Deleting a non-existent user returns `404 Not Found: User not found`
-
----
-
-## API Error Reference
-
-| Status Code | Meaning | Example Scenario |
-|-------------|---------|------------------|
-| 200 | Success | Any successful request |
-| 400 | Bad Request | Registering with a username/email already taken |
-| 401 | Unauthorized | Wrong password on login |
-| 404 | Not Found | Getting/deleting a user ID that doesn't exist |
-| 422 | Validation Error | Missing required fields in request body |
-| 500 | Server Error | Unexpected internal error |
-
----
-
-## Running with curl (Alternative to Swagger UI)
-
-**Register:**
 ```bash
-curl -X POST http://localhost:9000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "demouser1", "email": "demouser1@test.com", "password": "Demo1234"}'
+cd frontend
+npm install
+npm run dev
 ```
 
-**Login:**
+If `npm run dev` does not exist, check `frontend/package.json` and use the defined start script, such as:
+
 ```bash
-curl -X POST http://localhost:9000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "demouser1", "password": "Demo1234"}'
+npm start
 ```
 
-**List users:**
+Expected result:
+
+- The frontend should start on the local port printed by the terminal, commonly `http://localhost:3000` or `http://localhost:5173`.
+- Keep the backend running on port `9000` in one terminal and the frontend running in another terminal.
+
+### 4. Open the app
+
+- Open the frontend URL printed by the frontend dev server to use the React UI.
+- Open `http://localhost:9000/docs` to test the API in Swagger UI.[cite:1]
+
+## Important note about the old instructions
+
+The previous README flow entered `backend/`, created a Python environment, and ran `uvicorn simple_server:app --host 0.0.0.0 --port 9000`.[cite:1]
+That flow correctly launches the FastAPI API and Swagger docs, but it does not include any step to install or start the React frontend even though the repository includes a `frontend/` directory.[cite:1]
+
+## Option 2: Run with Docker Compose
+
+The repository also includes a `docker-compose.yml` file, which indicates there is a containerized way to orchestrate services together.[cite:1]
+A typical usage pattern is:
+
 ```bash
-curl http://localhost:9000/api/users
+docker compose up --build
 ```
 
-**Get user by ID:**
-```bash
-curl http://localhost:9000/api/users/1
-```
+If Docker Compose is configured correctly for both services, it should bring up the backend and frontend together using the repository's compose file.[cite:1]
 
-**Delete user:**
-```bash
-curl -X DELETE http://localhost:9000/api/users/1
-```
+## Backend API endpoints
 
----
+Once the backend is running, Swagger shows these routes:[cite:1]
 
-## Notes
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` [cite:1] | Health check [cite:1] |
+| POST | `/api/auth/register` [cite:1] | Register a user [cite:1] |
+| POST | `/api/auth/login` [cite:1] | Log in and receive a JWT token [cite:1] |
+| GET | `/api/users` [cite:1] | List all users [cite:1] |
+| GET | `/api/users/{user_id}` [cite:1] | Get a user by ID [cite:1] |
+| DELETE | `/api/users/{user_id}` [cite:1] | Delete a user by ID [cite:1] |
 
-- The SQLite database (`demo.db`) is created automatically in the `backend/` folder on first run.
-- No external database setup required — everything works out of the box.
-- The JWT token expires after **30 minutes** by default.
-- Passwords are hashed with **bcrypt** before storage — never stored in plain text.
-- Duplicate usernames or emails on registration return `400 Bad Request`.
+## Troubleshooting
+
+### Backend works but no UI appears
+
+If `http://localhost:9000` or `http://localhost:9000/docs` works but no frontend page is rendered, the backend is running but the frontend has not been started yet.[cite:1]
+Start the React app from the `frontend/` directory in a separate terminal.[cite:1]
+
+### Frontend starts but cannot reach the API
+
+Make sure the backend is running on port `9000` and confirm the frontend is configured to call the backend at `http://localhost:9000` or the matching API base URL for your environment.
+
+### SQLite database file
+
+The SQLite database file `demo.db` is created automatically in `backend/` on first run.[cite:1]
+No separate external database setup is required for the documented local backend flow.[cite:1]
