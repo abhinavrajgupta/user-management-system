@@ -1,6 +1,6 @@
 # Complete Code Guide: User Management System
 
-> **Author**: Abhinav RajGupta  
+> **Author**: Abhinav Raj Gupta  
 > **Last Updated**: July 16, 2026
 
 ---
