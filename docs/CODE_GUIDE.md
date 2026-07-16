@@ -1,7 +1,6 @@
 # Complete Code Guide: User Management System
 
-> **For**: Interview prep, learning full-stack development, understanding production patterns  
-> **Author**: Abhinav Rajgupta  
+> **Author**: Abhinav RajGupta  
 > **Last Updated**: July 16, 2026
 
 ---
