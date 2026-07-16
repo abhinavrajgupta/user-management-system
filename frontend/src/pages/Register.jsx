@@ -1,7 +1,11 @@
 // Register.jsx
 // PURPOSE: User registration page.
-// Very similar to Login but with more fields and calls /auth/register.
+// Calls POST /api/auth/register with { username, email, password }.
 // After successful registration, redirects to login page.
+//
+// FIX: Backend UserCreate model expects { username, email, password }.
+// The old form had a 'full_name' field which does NOT exist in the backend schema.
+// Replaced full_name with username to match simple_server.py exactly.
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -9,10 +13,11 @@ import { authAPI } from '../api/api';
 
 function Register() {
   const [formData, setFormData] = useState({
-    full_name: '',
+    username: '',
     email: '',
     password: '',
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -29,12 +34,15 @@ function Register() {
     setSuccess('');
 
     try {
+      // Sends { username, email, password } to POST /api/auth/register
+      // Backend checks for duplicate username or email, hashes the password,
+      // creates the user row, and returns { access_token, token_type }.
       await authAPI.register(formData);
-      // Show success message
+
       setSuccess('Account created! Redirecting to login...');
-      // Redirect to login after 2 seconds
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
+      // Backend returns 400 with detail: 'Username or email already exists'
       setError(err.message);
     } finally {
       setLoading(false);
@@ -52,13 +60,13 @@ function Register() {
 
         <form onSubmit={handleSubmit}>
           <div style={styles.field}>
-            <label style={styles.label}>Full Name</label>
+            <label style={styles.label}>Username</label>
             <input
               type="text"
-              name="full_name"
-              value={formData.full_name}
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="Jane Doe"
+              placeholder="Choose a username"
               required
               minLength={2}
               style={styles.input}
@@ -72,7 +80,7 @@ function Register() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="jane@example.com"
+              placeholder="you@example.com"
               required
               style={styles.input}
             />
@@ -92,11 +100,7 @@ function Register() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ ...styles.button, opacity: loading ? 0.7 : 1 }}
-          >
+          <button type="submit" disabled={loading} style={styles.button}>
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
@@ -128,23 +132,39 @@ const styles = {
   title: { textAlign: 'center', color: '#1a1a2e', marginBottom: '0.5rem' },
   subtitle: { textAlign: 'center', color: '#666', marginBottom: '1.5rem' },
   error: {
-    backgroundColor: '#fee2e2', color: '#dc2626',
-    padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem',
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    padding: '0.75rem',
+    borderRadius: '4px',
+    marginBottom: '1rem',
   },
   success: {
-    backgroundColor: '#dcfce7', color: '#16a34a',
-    padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem',
+    backgroundColor: '#dcfce7',
+    color: '#16a34a',
+    padding: '0.75rem',
+    borderRadius: '4px',
+    marginBottom: '1rem',
   },
   field: { marginBottom: '1rem' },
   label: { display: 'block', marginBottom: '0.5rem', color: '#333', fontWeight: '500' },
   input: {
-    width: '100%', padding: '0.75rem', border: '1px solid #ddd',
-    borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box',
+    width: '100%',
+    padding: '0.75rem',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    boxSizing: 'border-box',
   },
   button: {
-    width: '100%', padding: '0.75rem', backgroundColor: '#059669',
-    color: 'white', border: 'none', borderRadius: '4px',
-    fontSize: '1rem', cursor: 'pointer', marginTop: '0.5rem',
+    width: '100%',
+    padding: '0.75rem',
+    backgroundColor: '#059669',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    marginTop: '0.5rem',
   },
   link: { textAlign: 'center', marginTop: '1rem', color: '#666' },
 };
