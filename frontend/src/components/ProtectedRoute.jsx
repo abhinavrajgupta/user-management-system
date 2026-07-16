@@ -7,7 +7,8 @@ import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children }) => {
   // Retrieve the token that was stored during login
-  const token = localStorage.getItem('token');
+  // NOTE: authAPI.login() stores under 'access_token' via tokenUtils
+  const token = localStorage.getItem('access_token');
 
   // If no token found, redirect to login page
   // <Navigate> is React Router's way of doing a programmatic redirect
