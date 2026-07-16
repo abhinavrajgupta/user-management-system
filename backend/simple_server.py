@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from pydantic import BaseModel
+from pydantic import EmailStr, validator
 import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
@@ -49,6 +50,24 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
+
+    @validator('password')
+    def password_strength(cls, v):
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain a number')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain an uppercase letter')
+        return v
+    
+    @validator('username')
+    def username_alphanumeric(cls, v):
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        if len(v) < 3:
+            raise ValueError('Username must be at least 3 characters')
+        return v
 
 
 class UserLogin(BaseModel):
