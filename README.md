@@ -122,19 +122,6 @@ SQLAlchemy will auto-create tables on first startup.
 
 ---
 
-## Interview Questions This Project Covers
-
-1. What is REST and how does your API follow REST principles?
-2. How does JWT authentication work? What is in the token payload?
-3. Why do we hash passwords instead of encrypting them?
-4. What is the difference between a Pydantic schema and a SQLAlchemy model?
-5. What is CORS and why is it needed?
-6. How does React Router protect private routes?
-7. What happens if the JWT token expires?
-8. What is the purpose of a service layer vs. a router layer?
-
----
-
 ## Author
 
 Abhinav Raj Gupta — Built for software engineering interview preparation.
